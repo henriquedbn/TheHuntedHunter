@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Protótipo de Jogo</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .game-window {
+            width: 500px;
+            height: 300px;
+            border: 1px solid black;
+            position: relative; /* Importante para mover o elemento interno */
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="text-center">The Hunted Hunter</h1>
+        <div class="container mt-3">
+            <p for="contadorLevel">Level: <span id="contadorLevel"></span></p> 
+        </div>
+        <div class="container mt-4">
+            <canvas id="gameCanvas" class="game-window"></canvas>
+        </div>
+
+    </div>
+</body>
+</html>
+
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    let spdX = 0;
+    let spdY = 0;
+    let posX = 0;
+    let posY = 0;
+	let level = 0;
+    let pPosX = (Math.random() - 0.5) * 145;
+    let pPosY = (Math.random() - 0.5) * 70;
+    let pSpdX = (Math.random() - 0.5) * 2;
+    let pSpdY = (Math.random() - 0.5) * 2;
+    let ePosX = [(Math.random()-0.5)*145];
+    let ePosY = [(Math.random()-0.5)*70];
+    let eSpdX = [(Math.random()-0.5)*2];
+    let eSpdY = [(Math.random()-0.5)*2];
+
+    document.addEventListener('keydown', move);
+    document.addEventListener('keyup', slowStop);
+
+    function updatePositions() {
+        if (Math.abs(posX) <= 145) posX += spdX;
+        if (Math.abs(posY) <= 70) posY += spdY;
+        if (Math.abs(posX) > 145) {
+            posX = Math.sign(posX) * 145;
+            spdX = spdX * (-0.5);
+        }
+        if (Math.abs(posY) > 70) {
+            posY = Math.sign(posY) * 70;
+            spdY = spdY * (-0.5);
+        }
+        // Verificar se posX ultrapassou os limites da janela
+        if (posX > 145) posX = 145;
+        if (posX < -145) posX = -145;
+        // Verificar se posY ultrapassou os limites da janela
+        if (posY > 70) posY = 70;
+        if (posY < -70) posY = -70;
+
+        //para a presa
+        if (Math.abs(pPosX) <= 145) pPosX += pSpdX;
+        if (Math.abs(pPosY) <= 70) pPosY += pSpdY;
+        // Verificar se pPosX ultrapassou os limites da janela
+        if (pPosX + pSpdX > 145) {
+            pPosX = 145 - pSpdX;
+            pSpdX = -pSpdX;
+        }
+        if (pPosX + pSpdX < -145) {
+            pPosX = -145 - pSpdX;
+            pSpdX = -pSpdX;
+        }
+
+        // Verificar se pPosY ultrapassou os limites da janela
+        if (pPosY + pSpdY > 70) {
+            pPosY = 70 - pSpdY;
+            pSpdY = -pSpdY;
+        }
+        if (pPosY + pSpdY < -70) {
+            pPosY = -70 - pSpdY;
+            pSpdY = -pSpdY;
+        }
+
+        prey();
+
+        //para o inimigo
+		for(i=0;i<=level;i++){
+			if (Math.abs(ePosX[i]) <= 145) ePosX[i] += eSpdX[i];
+			if (Math.abs(ePosY[i]) <= 70) ePosY[i] += eSpdY[i];
+			// Verificar se ePosX ultrapassou os limites da janela
+			if (ePosX[i] + eSpdX[i] > 145) {
+				ePosX[i] = 145 - eSpdX[i];
+				eSpdX[i] = -eSpdX[i];
+			}
+			if (ePosX[i] + eSpdX[i] < -145) {
+				ePosX[i] = -145 - eSpdX[i];
+				eSpdX[i] = -eSpdX[i];
+			}
+
+			// Verificar se ePosY ultrapassou os limites da janela
+			if (ePosY[i] + eSpdY[i] > 70) {
+				ePosY[i] = 70 - eSpdY[i];
+				eSpdY[i] = -eSpdY[i];
+			}
+			if (ePosY[i] + eSpdY[i] < -70) {
+				ePosY[i] = -70 - eSpdY[i];
+				eSpdY[i] = -eSpdY[i];
+			}
+			enemy(i)
+			// Verificar colisão do jogador com o inimigo
+			const distanceToEnemy = Math.sqrt((posX - ePosX[i]) ** 2 + (posY - ePosY[i]) ** 2);
+			if (distanceToEnemy < 8) { // Tamanho somado do jogador e do inimigo
+				alert("Perdeu!");
+				level = 0;
+				resetGame();
+				return(level);
+			}
+		}
+
+        // Verificar colisão do jogador com a presa
+        const distanceToPrey = Math.sqrt((posX - pPosX) ** 2 + (posY - pPosY) ** 2);
+        if (distanceToPrey < 8) { // Tamanho somado do jogador e da presa
+            alert("Ganhou!");
+			level++;
+            resetGame();
+            return(level);
+        }
+		
+		draw();
+		const contadorLevel = document.querySelector('#contadorLevel');
+		contadorLevel.textContent = `${level + 1}`;
+    }
+
+    function move(event) {
+        switch (event.key) {
+            case 'ArrowUp':
+                if (spdY > -5) spdY--;
+                console.log(`cm ${spdY}`);
+                break;
+            case 'ArrowRight':
+                if (spdX < 5) spdX++
+                console.log(`dir ${spdX}`);
+                break;
+            case 'ArrowLeft':
+                if (spdX > -5) spdX--;
+                console.log(`esq ${spdX}`);
+                break;
+            case 'ArrowDown':
+                if (spdY < 5) spdY++;
+                console.log(`bx ${spdY}`);
+                break;
+        }
+        console.log(`Move att vX: ${spdX} vY: ${spdY} pX: ${posX} pY: ${posY}`);
+    }
+
+    function slowStop() {
+        const descRateX = 0.01;
+        const descRateY = 0.01;
+        const slowDownInterval = setInterval(() => {
+            if (spdX < 0) spdX += descRateX;
+            if (spdX > 0) spdX -= descRateX;
+            if (spdY < 0) spdY += descRateY;
+            if (spdY > 0) spdY -= descRateY;
+            if (Math.abs(spdX) <= descRateX) spdX = 0;
+            if (Math.abs(spdY) <= descRateY) spdY = 0;   
+
+            if (spdX === 0 && spdY === 0) {
+                clearInterval(slowDownInterval);
+            }
+            console.log(`Slow att vX: ${spdX} vY: ${spdY} pX: ${posX} pY: ${posY}`);
+        }, 1); 
+    }
+
+    function draw() {
+        // Limpe o canvas
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Desenhe a janela
+        ctx.fillStyle = 'white';
+        ctx.strokeStyle = 'black';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.strokeRect(0, 0, canvas.width, canvas.height);
+
+        // Desenhe o jogador como um ponto preto
+        ctx.fillStyle = 'black';
+        ctx.beginPath();
+        ctx.arc(canvas.width / 2 + posX, canvas.height / 2 + posY, 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.closePath();
+
+        // Desenhe a presa
+        ctx.fillStyle = 'green';
+        ctx.beginPath();
+        ctx.arc(canvas.width / 2 + pPosX, canvas.height / 2 + pPosY, 3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.closePath();
+
+        // Desenhe os inimigos
+		for(i=0;i<=level;i++){
+			ctx.fillStyle = 'red';
+			ctx.beginPath();
+			ctx.arc(canvas.width / 2 + ePosX[i], canvas.height / 2 + ePosY[i], 3, 0, Math.PI * 2);
+			ctx.fill();
+			ctx.closePath();
+		}
+    }
+
+    prey();
+    draw(); 
+
+    function prey() {
+        // Calcular direção da presa em relação ao jogador
+        const directionX = pPosX - posX;
+        const directionY = pPosY - posY;
+
+        // Ajustar velocidade da presa para tentar se afastar do jogador
+        pSpdX += (Math.sign(directionX) * 0.1) - pSpdX * 0.05;
+        pSpdY += (Math.sign(directionY) * 0.1) - pSpdY * 0.05;
+
+        // Limitar velocidade da presa
+        if (Math.abs(pSpdX) > 3) pSpdX = Math.sign(pSpdX) * 3;
+        if (Math.abs(pSpdY) > 3) pSpdY = Math.sign(pSpdY) * 3;
+    }
+
+    function enemy(i) {
+        // Calcular direção do inimigo em relação ao jogador
+        const directionX = posX - ePosX[i];
+        const directionY = posY - ePosY[i];
+
+        // Ajustar velocidade do inimigo para seguir o jogador
+        eSpdX[i] += (Math.sign(directionX) * 0.3) - eSpdX[i] * 1;
+        eSpdY[i] += (Math.sign(directionY) * 0.3) - eSpdY[i] * 1;
+
+        // Limitar velocidade do inimigo
+        if (Math.abs(eSpdX[i]) > 3) eSpdX[i] = Math.sign(eSpdX[i]) * 0.3;
+        if (Math.abs(eSpdY[i]) > 3) eSpdY[i] = Math.sign(eSpdY[i]) * 0.3;
+}
+
+function resetGame() {
+    // Define as posições iniciais do jogador e presa
+    posX = 0;
+    posY = 0;
+    pPosX = (Math.random() - 0.5) * 145;
+    pPosY = (Math.random() - 0.5) * 70;
+   
+
+    // Define as velocidades iniciais do jogador e presa
+    spdX = 0;
+    spdY = 0;
+    pSpdX = (Math.random() - 0.5) * 2;
+    pSpdY = (Math.random() - 0.5) * 2;
+	
+	for (i = 0; i <= level; i++) {
+    if (Math.random() < 0.5) { // Spawn na vertical
+        ePosX[i] = Math.random() < 0.5 ? -145 : 145;
+        ePosY[i] = (Math.random() - 0.5) * 70;
+        eSpdX[i] = Math.random() < 0.5 ? 3 : -3;
+        eSpdY[i] = (Math.random() - 0.5) * 3;
+    } else { // Spawn na horizontal
+        ePosX[i] = (Math.random() - 0.5) * 145;
+        ePosY[i] = Math.random() < 0.5 ? -70 : 70;
+        eSpdX[i] = (Math.random() - 0.5) * 3;
+        eSpdY[i] = Math.random() < 0.5 ? 3 : -3;
+    }
+}
+	
+}
+
+    setInterval(updatePositions, 10);
+</script>
